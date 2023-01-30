@@ -5,8 +5,8 @@ import { QueryResult } from "pg";
 import { movieSchema, updateMovieSchema } from "../schemas/movie.schema.js";
 export async function getAllMovies(req: Request,res: Response){
     try{
-        const movies: QueryResult<movies> = await getMovies()
-      return  res.status(200).send(movies.rows)
+        const movies = await getMovies()
+      return  res.status(200).send(movies)
     }
       catch (err) {
         res.status(422).send(err.message);
@@ -68,8 +68,8 @@ export async function deleteMovie(req: Request,res: Response){
 export async function qtdMoviesByStream(req: Request,res: Response){
     const { movieStream} = req.params
     try{
-        const rows: QueryResult<qtdMovie>=await qtdMoviesRepository( movieStream)
-        return  res.status(200).send(rows.rows)
+        const rows=await qtdMoviesRepository( movieStream)
+        return  res.status(200).send(rows)
     }
     catch (err) {
         res.status(422).send(err.message);

@@ -1,47 +1,106 @@
-import connection from "../database/db.js";
-import { movie,movies, qtdMovie, update} from "../protocols/movie.js";
-import { QueryResult } from "pg";
-export async function getMovies(): Promise<QueryResult<movies>> {
-        return await connection.query(`
-        SELECT a.id, a."movieName",a."movieStream",b."genderName",a."movieStatus",a."movieDescription"
-    FROM "allMovies" as a  INNER JOIN "moviesGenders" as b ON b.id = a."genderId"
-    ORDER BY a.id DESC  ;
-        `)
-
-}
-
-export async function postMovieRepository(body:movie): Promise<QueryResult<{}>> {
-    const {name,stream,genderId,status,description} = body as movie
-       return  await  connection.query(`
-         INSERT INTO "allMovies" ("movieName","movieStream","genderId","movieStatus","movieDescription") 
-         VALUES ($1,$2,$3,$4,$5);  ;
-        `,[name,stream,genderId,status,description])
-}
-
-export async function updateMovieRepository(body:update,movieId:string): Promise<QueryResult<{}>> {
-    const {status,description} = body as update
-        if(description){
-            return  await connection.query(`
-            UPDATE "allMovies" SET "movieStatus" = $1,"movieDescription"=$2  WHERE "allMovies".id = $3
-            `,[status,description,movieId])
-         
+import prisma from "../database/db.js";
+import { movie,movieDbCreate,movies, moviesFromdb, qtdMovie, update} from "../protocols/movie.js";
+export async function getMovies() {
+ const allMoviesObj: moviesFromdb[] =  await prisma.allMovies.findMany({
+        orderBy: {
+            id: "desc"
+          },
+          include:{
+        moviesGenders :{
+            select:{
+                genderName : true
+            }
         }
-        return  await  connection.query(`
-         UPDATE "allMovies" SET "movieStatus" = $1 WHERE "allMovies".id = $2
-        `,[status,movieId])
+          }
+    })
+    console.log(allMoviesObj)
+    const finalObj: movies[] = allMoviesObj.map((e,i)=>{
+        const obj : movies = {
+            movieName: e.movieName,
+            movieStream: e. movieStream,
+            genderName: e.moviesGenders.genderName,
+            movieStatus:e.movieStatus,
+            movieDescription: e. movieDescription
+        }
+        return obj
+    } )
+    return finalObj 
+}
+
+export async function postMovieRepository(body:movie) {
+    const {name,stream,genderId,status,description} = body as movie
+    const postmovie: movieDbCreate = {
+        movieName:name,
+        movieStream:stream,
+        genderId: genderId,
+        movieStatus: status,
+        movieDescription:description
+    }
+    return await prisma.allMovies.create({
+        data:postmovie
+    })
+}
+
+export async function updateMovieRepository(body:update,movieId:string) {
+    const id =Number( movieId)
+    const {status,description} = body as update
+      if(description){
+          return  await prisma.allMovies.update(
+            {where:{
+            id
+            },
+            data:{
+                movieStatus: status,
+                movieDescription:description
+            }
+        }
+          )
+         
+      }
+      return  await prisma.allMovies.update(
+        {where:{
+        id
+        },
+        data:{
+            movieStatus: status,
+        }
+    }
+      )
 
 }
 
-export async function deleteMovieRepository(movieId:string): Promise<QueryResult<{}>> {
-    const deleteConfirmation = await connection.query('DELETE from "allMovies" WHERE "allMovies".id = $1 ', [movieId]); 
-    console.log(deleteConfirmation)
+export async function deleteMovieRepository(movieId:string) {
+    const id =Number( movieId)
+    const deleteConfirmation = await prisma.allMovies.delete({
+        where:{
+            id
+        }
+    }); 
+   console.log(deleteConfirmation)
         return deleteConfirmation
 }
 
-export async function qtdMoviesRepository( movieStream:string): Promise<QueryResult<qtdMovie>> {
-        return await  connection.query(`
-        SELECT COUNT(a."movieStream"), a."movieStream" 
-        FROM "allMovies" as a WHERE a."movieStream"=$1
-        GROUP BY a."movieStream"
-        `,[movieStream])
+export async function qtdMoviesRepository( movieStream:string)  {
+
+    const allMoviesObj =  await prisma.allMovies.findMany({
+        include:{
+            moviesGenders :{
+                select:{
+                    genderName : true
+                }
+            }
+              }
+    }) 
+       let qtdMoviesByStream = 0
+       allMoviesObj.map( e => {
+        if(e.movieStream === movieStream ){
+            qtdMoviesByStream++
+        }
+       })
+
+       const finalObj: qtdMovie = {
+            count: qtdMoviesByStream,
+            movieStream: movieStream
+       }
+       return finalObj
 }

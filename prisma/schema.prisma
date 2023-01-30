@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model allMovies {
+  id               Int           @id @default(autoincrement())
+  movieName        String        @unique
+  movieStream      String
+  genderId         Int
+  movieStatus      String
+  movieDescription String?
+  createdAt        DateTime      @default(now()) @db.Timestamp(6)
+  moviesGenders    moviesGenders @relation(fields: [genderId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "allMovies_fk0")
+}
+
+model moviesGenders {
+  id         Int         @id @default(autoincrement())
+  genderName String      @unique
+  createdAt  DateTime    @default(now()) @db.Timestamp(6)
+  allMovies  allMovies[]
+}
